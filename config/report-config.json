@@ -6,14 +6,46 @@
     "storyTitle": "عنوان",
     "path": "Path"
   },
+  "categories": [
+    {
+      "label": "برنامه پذیرش",
+      "path": ["admission-plans", "admission-programs"],
+      "text": ["برنامه پذیرش", "برنامه‌های پذیرش", "admissionprogram"]
+    },
+    {
+      "label": "اقامتگاه",
+      "path": ["/accommodations", "/buildings", "/rooms", "/beds", "/floors", "/files"],
+      "text": ["اقامت", "تخت", "ساختمان", "واحد اقامتی", "طبقه", "residence", "accomodat", "accommodat"]
+    },
+    {
+      "label": "اطلاعات پایه",
+      "path": ["basic-information"],
+      "text": ["درجه کیفی", "تمپلیت اماکن", "دلایل غیرفعال"]
+    },
+    {
+      "label": "کسب‌وکار",
+      "path": ["/business/"],
+      "text": ["کسب‌وکار", "شعبه"]
+    }
+  ],
   "labels": {
     "reportTitle": "گزارش روزانه",
+    "weekTitle": "گزارش هفتگی",
+    "monthTitle": "گزارش ماهانه",
+    "rangeTitle": "گزارش بازه",
     "windowLine": "بازه: {from} تا {to} به وقت تهران",
+    "rangeDays": "روزها: {from} تا {to} به وقت تهران",
+    "rangeHours": "هر روز {from} تا {to}",
+    "missingDays": "بدون داده: {days}",
+    "sourceDb": "منبع: روزهای ذخیره‌شده در پایگاه محلی. برای این بازه گیت‌لب دوباره خوانده نشده است.",
     "summary": "خلاصه",
     "summaryDocs": "اسناد",
     "summaryApis": "API",
     "summaryCreated": "ایشوهای ثبت‌شده",
     "summaryChecked": "ایشوهای بررسی‌شده",
+    "categoryOther": "سایر",
+    "categoryApiLine": "{n} API مربوط به {cat} تست شد",
+    "categoryDocLine": "{n} سند {cat} بررسی شد",
     "section1": "۱. اسناد بررسی‌شده با نظر من",
     "section2": "۲. APIهای تست‌شده توسط من",
     "section3": "۳. ایشوهایی که من ثبت کردم",

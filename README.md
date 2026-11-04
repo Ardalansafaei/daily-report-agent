@@ -9,7 +9,8 @@
 | `AGENTS.md` | دستورهای ایجنت؛ از همین‌جا شروع می‌شود. |
 | `docs/report-guide.md` | تعریف هر بخش، قاعده‌ی شمارش و محدودیت‌ها. |
 | `config/report-config.json` | برچسب‌های فارسی و نشانه‌های تشخیص نوع کامنت. |
-| `tools/daily-report.ps1` | جمع‌آوری و ساخت گزارش (فقط خواندن). |
+| `tools/daily-report.ps1` | جمع‌آوری گزارش روز و ذخیره‌ی آن در پایگاه محلی (فقط خواندن از گیت‌لب). |
+| `tools/report_store.py` | نگهداری روزها و ساخت گزارش هفتگی یا ماهانه از پایگاه محلی. |
 
 ## استفاده
 
@@ -21,7 +22,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\daily-report.ps1 -Date
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\daily-report.ps1 -Date 2026-10-20 -From 09:00 -To 18:00
 ```
 
-گزارش روی ترمینال چاپ می‌شود و در `.tmp/daily-report/report-<date>.txt` هم ذخیره می‌شود.
+مسیر گزارش روی ترمینال چاپ می‌شود و متن در `.tmp/daily-report/report-<date>.txt` ذخیره می‌شود. همان روز در `.data/reports.db` هم می‌ماند تا گزارش هفتگی و ماهانه بدون خواندن دوبارهٔ گیت‌لب ساخته شود.
 
 ## نکته‌های امنیتی
 

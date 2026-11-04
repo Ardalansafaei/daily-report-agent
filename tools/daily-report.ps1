@@ -158,6 +158,37 @@ function Get-NoteKind([string]$Body) {
   'other'
 }
 
+function Get-AreaToken([string]$Body) {
+  $m = [regex]::Match($Body, 'userStory/phase-1/([^/\s\)#]+)')
+  if ($m.Success) { return [Uri]::UnescapeDataString($m.Groups[1].Value) }
+  ''
+}
+
+function Test-HasToken([string]$Text, [string]$Needle) {
+  if (-not $Text -or -not $Needle) { return $false }
+  $Text.IndexOf($Needle, [StringComparison]::OrdinalIgnoreCase) -ge 0
+}
+
+function Get-WorkCategory([string]$Path, [string]$Title, [string]$Page, [string]$Area) {
+  foreach ($c in @($cfg.categories)) {
+    foreach ($n in @($c.path)) {
+      if (Test-HasToken $Path ([string]$n)) { return [string]$c.label }
+    }
+  }
+  foreach ($c in @($cfg.categories)) {
+    foreach ($n in @($c.text)) {
+      $needle = [string]$n
+      if ((Test-HasToken $Area $needle) -or (Test-HasToken $Title $needle)) { return [string]$c.label }
+    }
+  }
+  foreach ($c in @($cfg.categories)) {
+    foreach ($n in @($c.text)) {
+      if (Test-HasToken $Page ([string]$n)) { return [string]$c.label }
+    }
+  }
+  [string]$L.categoryOther
+}
+
 $storyDocs = @{}
 $apiDocs = @{}
 $createdIssues = @{}
@@ -178,9 +209,13 @@ foreach ($e in $events) {
       $title = Get-FieldValue $body $cfg.fields.storyTitle
       if (-not $title) { $title = $pageTitle }
       $key = $pageTitle
-      if (-not $storyDocs.ContainsKey($key)) { $storyDocs[$key] = [pscustomobject]@{ Title = $title; Count = 0 } }
+      $area = Get-AreaToken $body
+      if (-not $storyDocs.ContainsKey($key)) {
+        $storyDocs[$key] = [pscustomobject]@{ Title = $title; Count = 0; Page = $pageTitle; Area = $area }
+      }
       $storyDocs[$key].Count++
       if ($title) { $storyDocs[$key].Title = $title }
+      if ($area) { $storyDocs[$key].Area = $area }
     }
     elseif ($kind -eq 'api') {
       $mm = [regex]::Match($body, '(?m)^-\s*\[x\]\s*(GET|POST|PUT|PATCH|DELETE)\b')
@@ -189,13 +224,16 @@ foreach ($e in $events) {
       $key = (($method + ' ' + $path).Trim()).ToLowerInvariant()
       if (-not $key) { $key = 'note ' + $note.id }
       $service = Get-FieldValue $body $cfg.fields.serviceName
+      $area = Get-AreaToken $body
       if (-not $apiDocs.ContainsKey($key)) {
-        $apiDocs[$key] = [pscustomobject]@{ Service = $service; Method = $method; Path = $path; Count = 0 }
+        $apiDocs[$key] = [pscustomobject]@{ Service = $service; Method = $method; Path = $path; Count = 0; Page = $pageTitle; Area = $area }
       }
       $apiDocs[$key].Count++
       if ($service) { $apiDocs[$key].Service = $service }
       if ($method) { $apiDocs[$key].Method = $method }
       if ($path) { $apiDocs[$key].Path = $path }
+      if ($area) { $apiDocs[$key].Area = $area }
+      if ($pageTitle) { $apiDocs[$key].Page = $pageTitle }
     }
     else { $otherWiki++ }
     continue
@@ -287,6 +325,36 @@ $lines.Add('# ' + $L.reportTitle + ' - ' + $Date)
 $lines.Add('')
 $lines.Add($L.windowLine.Replace('{from}', $From).Replace('{to}', $To))
 
+$catOrder = @{}
+$catIndex = 0
+foreach ($c in @($cfg.categories)) { $catOrder[[string]$c.label] = $catIndex; $catIndex++ }
+$catOrder[[string]$L.categoryOther] = $catIndex
+
+function Add-CategoryLine([System.Collections.Generic.List[string]]$Sink, $Groups, [string]$Template) {
+  $rows = @($Groups.GetEnumerator() | Sort-Object @{ Expression = { $_.Value }; Descending = $true }, @{ Expression = { $catOrder[[string]$_.Key] } })
+  foreach ($row in $rows) {
+    if ([int]$row.Value -le 0) { continue }
+    $Sink.Add($Template.Replace('{n}', [string][int]$row.Value).Replace('{cat}', [string]$row.Key))
+  }
+}
+
+$apiCats = @{}
+foreach ($a in $apiItems) {
+  $label = Get-WorkCategory $a.Path $a.Service $a.Page $a.Area
+  if (-not $apiCats.ContainsKey($label)) { $apiCats[$label] = 0 }
+  $apiCats[$label]++
+}
+$docCats = @{}
+foreach ($s in $storyItems) {
+  $label = Get-WorkCategory '' $s.Title $s.Page $s.Area
+  if (-not $docCats.ContainsKey($label)) { $docCats[$label] = 0 }
+  $docCats[$label]++
+}
+
+$lines.Add('')
+Add-CategoryLine $lines $apiCats $L.categoryApiLine
+Add-CategoryLine $lines $docCats $L.categoryDocLine
+
 $lines.Add('')
 $lines.Add('## ' + $L.summary)
 $lines.Add('- ' + $L.summaryDocs + ': ' + $storyItems.Count + ' ' + $L.documents + ' - ' + $storyNoteCount + ' ' + $L.comments)
@@ -343,4 +411,52 @@ if (-not $NoWrite) {
   [Console]::Error.WriteLine('[report] ' + $Out)
 }
 
-Write-Output $report
+# Local store for later week/month rollups. The chat only needs the path.
+$storeDocs = @($storyItems | ForEach-Object {
+  [pscustomobject]@{
+    page = [string]$_.Page
+    title = [string]$_.Title
+    category = (Get-WorkCategory '' $_.Title $_.Page $_.Area)
+    noteCount = [int]$_.Count
+  }
+})
+$storeApis = @($apiItems | ForEach-Object {
+  [pscustomobject]@{
+    method = [string]$_.Method
+    path = [string]$_.Path
+    service = [string]$_.Service
+    category = (Get-WorkCategory $_.Path $_.Service $_.Page $_.Area)
+    noteCount = [int]$_.Count
+  }
+})
+$storeCreated = @($createdItems | ForEach-Object {
+  $iid = [string]$_.Iid
+  $st = ''
+  if ($stateMap.ContainsKey($iid)) { $st = [string]$stateMap[$iid] }
+  [pscustomobject]@{ iid = [int]$_.Iid; title = [string]$_.Title; state = $st }
+})
+$storeChecked = @($checkedItems | ForEach-Object {
+  $iid = [string]$_.Iid
+  $st = ''
+  if ($stateMap.ContainsKey($iid)) { $st = [string]$stateMap[$iid] }
+  [pscustomobject]@{ iid = [int]$_.Iid; title = [string]$_.Title; state = $st }
+})
+$payload = [pscustomobject]@{
+  date = $Date
+  windowFrom = $From
+  windowTo = $To
+  documents = $storeDocs
+  endpoints = $storeApis
+  created = $storeCreated
+  checked = $storeChecked
+}
+$payloadFile = Join-Path $WorkDir ('store-' + $Date + '.json')
+[IO.File]::WriteAllText($payloadFile, ($payload | ConvertTo-Json -Depth 6 -Compress), $utf8)
+$storePy = Join-Path $AgentDir 'tools\report_store.py'
+$dbPath = Join-Path $root '.data\reports.db'
+& python $storePy save --db $dbPath --json $payloadFile
+if ($LASTEXITCODE -ne 0) {
+  [Console]::Error.WriteLine('[warn] local report database was not updated')
+}
+
+Write-Output ('[report] ' + $Out)
