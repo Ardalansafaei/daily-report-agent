@@ -9,6 +9,11 @@
   "labels": {
     "reportTitle": "گزارش روزانه",
     "windowLine": "بازه: {from} تا {to} به وقت تهران",
+    "summary": "خلاصه",
+    "summaryDocs": "اسناد",
+    "summaryApis": "API",
+    "summaryCreated": "ایشوهای ثبت‌شده",
+    "summaryChecked": "ایشوهای بررسی‌شده",
     "section1": "۱. اسناد بررسی‌شده با نظر من",
     "section2": "۲. APIهای تست‌شده توسط من",
     "section3": "۳. ایشوهایی که من ثبت کردم",

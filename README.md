@@ -13,7 +13,7 @@
 
 ## استفاده
 
-اول `.env.example` را کنار همین فایل به `.env` کپی کن و `GITLAB_URL` و `GITLAB_TOKEN` و `HTTP_PROXY_URL` را پر کن. بعد از این پوشه اجرا کن:
+از این پوشه اجرا کن:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\daily-report.ps1
@@ -21,7 +21,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\daily-report.ps1 -Date
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\daily-report.ps1 -Date 2026-10-20 -From 09:00 -To 18:00
 ```
 
-گزارش روی ترمینال چاپ می‌شود و در `.tmp/daily-report/report-<date>.md` هم ذخیره می‌شود.
+گزارش روی ترمینال چاپ می‌شود و در `.tmp/daily-report/report-<date>.txt` هم ذخیره می‌شود.
 
 ## نکته‌های امنیتی
 

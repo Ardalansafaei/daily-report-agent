@@ -2,7 +2,7 @@
 <#
 Daily activity report for the QA workspace (read-only).
 
-One work window (default 08:00-20:00 Asia/Tehran on one date), four lists:
+One work window (default 05:00-24:00 Asia/Tehran on one date), four lists:
   1. wiki documents I reviewed (user-story review comments)
   2. API endpoints I tested (API-document review comments)
   3. kouleh issues I created
@@ -16,8 +16,8 @@ Persian labels live in ..\config\report-config.json so this file stays ASCII-onl
 [CmdletBinding()]
 param(
   [string]$Date,
-  [string]$From = '08:00',
-  [string]$To = '20:00',
+  [string]$From = '05:00',
+  [string]$To = '24:00',
   [string]$Out,
   [int]$MaxPages = 60,
   [switch]$NoWrite,
@@ -85,8 +85,17 @@ function ConvertTo-GregorianDate([string]$Value) {
 if (-not $Date) { $Date = [TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $tz).ToString('yyyy-MM-dd', $inv) }
 else { $Date = ConvertTo-GregorianDate $Date }
 
+$From = $From.Trim()
+$To = $To.Trim()
 $startLocal = [DateTime]::ParseExact(($Date + ' ' + $From), 'yyyy-MM-dd HH:mm', $inv)
-$endLocal = [DateTime]::ParseExact(($Date + ' ' + $To), 'yyyy-MM-dd HH:mm', $inv)
+# 24:00 is the end of that Tehran date (midnight), not a clock time ParseExact accepts.
+$endExclusive = $false
+if ($To -eq '24:00') {
+  $endLocal = [DateTime]::ParseExact($Date, 'yyyy-MM-dd', $inv).AddDays(1)
+  $endExclusive = $true
+} else {
+  $endLocal = [DateTime]::ParseExact(($Date + ' ' + $To), 'yyyy-MM-dd HH:mm', $inv)
+}
 $startUtc = [TimeZoneInfo]::ConvertTimeToUtc([DateTime]::SpecifyKind($startLocal, 'Unspecified'), $tz)
 $endUtc = [TimeZoneInfo]::ConvertTimeToUtc([DateTime]::SpecifyKind($endLocal, 'Unspecified'), $tz)
 if ($endUtc -le $startUtc) { throw '-To must be later than -From' }
@@ -99,7 +108,9 @@ function ConvertTo-Utc([string]$Iso) {
 function Test-InWindow([string]$Iso) {
   $u = ConvertTo-Utc $Iso
   if ($null -eq $u) { return $false }
-  ($u -ge $startUtc -and $u -le $endUtc)
+  if ($u -lt $startUtc) { return $false }
+  if ($endExclusive) { return ($u -lt $endUtc) }
+  ($u -le $endUtc)
 }
 
 # ---------------------------------------------------------------- identity
@@ -277,6 +288,13 @@ $lines.Add('')
 $lines.Add($L.windowLine.Replace('{from}', $From).Replace('{to}', $To))
 
 $lines.Add('')
+$lines.Add('## ' + $L.summary)
+$lines.Add('- ' + $L.summaryDocs + ': ' + $storyItems.Count + ' ' + $L.documents + ' - ' + $storyNoteCount + ' ' + $L.comments)
+$lines.Add('- ' + $L.summaryApis + ': ' + $apiItems.Count + ' ' + $L.endpoints + ' - ' + $apiNoteCount + ' ' + $L.comments)
+$lines.Add('- ' + $L.summaryCreated + ': ' + $createdItems.Count + ' ' + $L.issues)
+$lines.Add('- ' + $L.summaryChecked + ': ' + $checkedItems.Count + ' ' + $L.issues)
+
+$lines.Add('')
 $lines.Add('## ' + $L.section1)
 $lines.Add($L.total + ': ' + $storyItems.Count + ' ' + $L.documents + ' - ' + $storyNoteCount + ' ' + $L.comments)
 if ($storyItems.Count -eq 0) { $lines.Add('- ' + $L.empty) }
@@ -317,7 +335,7 @@ $lines.Add($L.sourceLine)
 $report = ($lines -join "`n").TrimEnd() + "`n"
 
 if (-not $NoWrite) {
-  if (-not $Out) { $Out = Join-Path $WorkDir ('report-' + $Date + '.md') }
+  if (-not $Out) { $Out = Join-Path $WorkDir ('report-' + $Date + '.txt') }
   if (-not [IO.Path]::IsPathRooted($Out)) { $Out = Join-Path $root $Out }
   $dir = Split-Path -Parent $Out
   if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
