@@ -320,7 +320,7 @@ function Test-TransportText([string]$Text) {
 }
 
 function Invoke-GitNetwork([string[]]$GitArgs) {
-  $base = (Get-WikiGitArgs) + @('-c', 'http.sslBackend=openssl', '-c', 'http.sslVersion=tlsv1.2')
+  $base = (Get-WikiGitArgs) + @('-c', 'http.sslBackend=openssl')
   $r = Invoke-Git ($base + $GitArgs)
   if ($r.Code -ne 0 -and (Test-TransportText $r.Text)) {
     $proxy = (Read-DotEnv)['HTTP_PROXY_URL']
