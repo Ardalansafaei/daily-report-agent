@@ -357,21 +357,23 @@ Add-CategoryLine $lines $docCats $L.categoryDocLine
 
 $lines.Add('')
 $lines.Add('## ' + $L.summary)
-$lines.Add('- ' + $L.summaryDocs + ': ' + $storyItems.Count + ' ' + $L.documents + ' - ' + $storyNoteCount + ' ' + $L.comments)
-$lines.Add('- ' + $L.summaryApis + ': ' + $apiItems.Count + ' ' + $L.endpoints + ' - ' + $apiNoteCount + ' ' + $L.comments)
-$lines.Add('- ' + $L.summaryCreated + ': ' + $createdItems.Count + ' ' + $L.issues)
-$lines.Add('- ' + $L.summaryChecked + ': ' + $checkedItems.Count + ' ' + $L.issues)
+$summaryRows = 0
+if ($storyItems.Count -gt 0) { $lines.Add('- ' + $L.summaryDocs + ': ' + $storyItems.Count + ' ' + $L.documents + ' - ' + $storyNoteCount + ' ' + $L.comments); $summaryRows++ }
+if ($apiItems.Count -gt 0) { $lines.Add('- ' + $L.summaryApis + ': ' + $apiItems.Count + ' ' + $L.endpoints + ' - ' + $apiNoteCount + ' ' + $L.comments); $summaryRows++ }
+if ($createdItems.Count -gt 0) { $lines.Add('- ' + $L.summaryCreated + ': ' + $createdItems.Count + ' ' + $L.issues); $summaryRows++ }
+if ($checkedItems.Count -gt 0) { $lines.Add('- ' + $L.summaryChecked + ': ' + $checkedItems.Count + ' ' + $L.issues); $summaryRows++ }
+if ($summaryRows -eq 0) { $lines.Add('- ' + $L.empty) }
 
 $lines.Add('')
 $lines.Add('## ' + $L.section1)
-$lines.Add($L.total + ': ' + $storyItems.Count + ' ' + $L.documents + ' - ' + $storyNoteCount + ' ' + $L.comments)
-if ($storyItems.Count -eq 0) { $lines.Add('- ' + $L.empty) }
+if ($storyItems.Count -gt 0) { $lines.Add($L.total + ': ' + $storyItems.Count + ' ' + $L.documents + ' - ' + $storyNoteCount + ' ' + $L.comments) }
+else { $lines.Add('- ' + $L.empty) }
 foreach ($s in $storyItems) { $lines.Add('- ' + $s.Title + ' - ' + $s.Count + ' ' + $L.comments) }
 
 $lines.Add('')
 $lines.Add('## ' + $L.section2)
-$lines.Add($L.total + ': ' + $apiItems.Count + ' ' + $L.endpoints + ' - ' + $apiNoteCount + ' ' + $L.comments)
-if ($apiItems.Count -eq 0) { $lines.Add('- ' + $L.empty) }
+if ($apiItems.Count -gt 0) { $lines.Add($L.total + ': ' + $apiItems.Count + ' ' + $L.endpoints + ' - ' + $apiNoteCount + ' ' + $L.comments) }
+else { $lines.Add('- ' + $L.empty) }
 foreach ($a in $apiItems) {
   $label = $a.Service
   if (-not $label) { $label = $a.Path }
@@ -383,14 +385,14 @@ foreach ($a in $apiItems) {
 
 $lines.Add('')
 $lines.Add('## ' + $L.section3)
-$lines.Add($L.total + ': ' + $createdItems.Count + ' ' + $L.issues)
-if ($createdItems.Count -eq 0) { $lines.Add('- ' + $L.empty) }
+if ($createdItems.Count -gt 0) { $lines.Add($L.total + ': ' + $createdItems.Count + ' ' + $L.issues) }
+else { $lines.Add('- ' + $L.empty) }
 foreach ($i in $createdItems) { $lines.Add('- #' + $i.Iid + ' ' + $i.Title) }
 
 $lines.Add('')
 $lines.Add('## ' + $L.section4)
-$lines.Add($L.total + ': ' + $checkedItems.Count + ' ' + $L.issues)
-if ($checkedItems.Count -eq 0) { $lines.Add('- ' + $L.empty) }
+if ($checkedItems.Count -gt 0) { $lines.Add($L.total + ': ' + $checkedItems.Count + ' ' + $L.issues) }
+else { $lines.Add('- ' + $L.empty) }
 foreach ($i in $checkedItems) {
   $state = ''
   if ($stateMap.ContainsKey([string]$i.Iid)) { $state = $stateMap[[string]$i.Iid] }

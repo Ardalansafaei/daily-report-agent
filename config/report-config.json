@@ -44,7 +44,11 @@
     "summaryCreated": "ایشوهای ثبت‌شده",
     "summaryChecked": "ایشوهای بررسی‌شده",
     "summaryPerDay": "خلاصه روزبه‌روز",
-    "perDayLine": "{weekday} - اسناد: {docs} سند / {docNotes} نظر | API: {apis} اندپوینت / {apiNotes} نظر | ثبت‌شده: {created} ایشو | بررسی‌شده: {checked} ایشو",
+    "perDayDocsPart": "اسناد: {docs} سند / {docNotes} نظر",
+    "perDayApisPart": "API: {apis} اندپوینت / {apiNotes} نظر",
+    "perDayCreatedPart": "ثبت‌شده: {created} ایشو",
+    "perDayCheckedPart": "بررسی‌شده: {checked} ایشو",
+    "perDayJoin": " | ",
     "perDayNoData": "{weekday} - بدون داده",
     "weekdayNames": {
       "0": "دوشنبه",

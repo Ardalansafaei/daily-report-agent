@@ -275,16 +275,17 @@ def build_report(conn, cfg, start, end, kind):
 
     story_notes = sum(item["notes"] for item in docs.values())
     api_notes = sum(item["notes"] for item in apis.values())
-    lines.extend([
-        "",
-        rule,
-        "",
-        "## " + labels["summary"],
-        "- " + labels["summaryDocs"] + ": " + str(len(docs)) + " " + labels["documents"] + " - " + str(story_notes) + " " + labels["comments"],
-        "- " + labels["summaryApis"] + ": " + str(len(apis)) + " " + labels["endpoints"] + " - " + str(api_notes) + " " + labels["comments"],
-        "- " + labels["summaryCreated"] + ": " + str(len(created)) + " " + labels["issues"],
-        "- " + labels["summaryChecked"] + ": " + str(len(checked)) + " " + labels["issues"],
-    ])
+    lines.extend(["", rule, "", "## " + labels["summary"]])
+    summary = []
+    if docs:
+        summary.append("- " + labels["summaryDocs"] + ": " + str(len(docs)) + " " + labels["documents"] + " - " + str(story_notes) + " " + labels["comments"])
+    if apis:
+        summary.append("- " + labels["summaryApis"] + ": " + str(len(apis)) + " " + labels["endpoints"] + " - " + str(api_notes) + " " + labels["comments"])
+    if created:
+        summary.append("- " + labels["summaryCreated"] + ": " + str(len(created)) + " " + labels["issues"])
+    if checked:
+        summary.append("- " + labels["summaryChecked"] + ": " + str(len(checked)) + " " + labels["issues"])
+    lines.extend(summary or ["- " + labels["empty"]])
 
     if span_days > 1:
         stats = per_day_counts(conn, start_s, end_s)
@@ -297,25 +298,27 @@ def build_report(conn, cfg, start, end, kind):
                 lines.append("- " + fill(labels["perDayNoData"], weekday=name))
                 continue
             row = stats.get(key) or {}
-            lines.append("- " + fill(
-                labels["perDayLine"],
-                weekday=name,
-                docs=row.get("docs", 0),
-                docNotes=row.get("docNotes", 0),
-                apis=row.get("apis", 0),
-                apiNotes=row.get("apiNotes", 0),
-                created=row.get("created", 0),
-                checked=row.get("checked", 0),
-            ))
+            parts = []
+            if row.get("docs", 0):
+                parts.append(fill(labels["perDayDocsPart"], docs=row["docs"], docNotes=row.get("docNotes", 0)))
+            if row.get("apis", 0):
+                parts.append(fill(labels["perDayApisPart"], apis=row["apis"], apiNotes=row.get("apiNotes", 0)))
+            if row.get("created", 0):
+                parts.append(fill(labels["perDayCreatedPart"], created=row["created"]))
+            if row.get("checked", 0):
+                parts.append(fill(labels["perDayCheckedPart"], checked=row["checked"]))
+            if parts:
+                lines.append("- " + name + " - " + labels["perDayJoin"].join(parts))
 
     lines.extend([
         "",
         rule,
         "",
         "## " + labels["section1"],
-        labels["total"] + ": " + str(len(docs)) + " " + labels["documents"] + " - " + str(story_notes) + " " + labels["comments"],
     ])
-    if not docs:
+    if docs:
+        lines.append(labels["total"] + ": " + str(len(docs)) + " " + labels["documents"] + " - " + str(story_notes) + " " + labels["comments"])
+    else:
         lines.append("- " + labels["empty"])
     for item in sorted(docs.values(), key=lambda row: (-row["notes"], row["title"])):
         lines.append("- " + item["title"] + " - " + str(item["notes"]) + " " + labels["comments"])
@@ -325,9 +328,10 @@ def build_report(conn, cfg, start, end, kind):
         rule,
         "",
         "## " + labels["section2"],
-        labels["total"] + ": " + str(len(apis)) + " " + labels["endpoints"] + " - " + str(api_notes) + " " + labels["comments"],
     ])
-    if not apis:
+    if apis:
+        lines.append(labels["total"] + ": " + str(len(apis)) + " " + labels["endpoints"] + " - " + str(api_notes) + " " + labels["comments"])
+    else:
         lines.append("- " + labels["empty"])
     for item in sorted(apis.values(), key=lambda row: (-row["notes"], row["service"] or "")):
         label = item["service"] or item["path"] or labels["unknown"]
@@ -342,9 +346,10 @@ def build_report(conn, cfg, start, end, kind):
         rule,
         "",
         "## " + labels["section3"],
-        labels["total"] + ": " + str(len(created)) + " " + labels["issues"],
     ])
-    if not created:
+    if created:
+        lines.append(labels["total"] + ": " + str(len(created)) + " " + labels["issues"])
+    else:
         lines.append("- " + labels["empty"])
     for iid in sorted(created):
         lines.append("- #" + str(iid) + " " + created[iid]["title"])
@@ -354,9 +359,10 @@ def build_report(conn, cfg, start, end, kind):
         rule,
         "",
         "## " + labels["section4"],
-        labels["total"] + ": " + str(len(checked)) + " " + labels["issues"],
     ])
-    if not checked:
+    if checked:
+        lines.append(labels["total"] + ": " + str(len(checked)) + " " + labels["issues"])
+    else:
         lines.append("- " + labels["empty"])
     for iid in sorted(checked):
         item = checked[iid]
