@@ -148,9 +148,55 @@ def add_category_lines(lines, groups, template, order):
         lines.append(template.replace("{n}", str(count)).replace("{cat}", label))
 
 
+def fill(template, **values):
+    text = template
+    for key, value in values.items():
+        text = text.replace("{" + key + "}", str(value))
+    return text
+
+
+def per_day_counts(conn, start_s, end_s):
+    stats = {}
+
+    def slot(day):
+        return stats.setdefault(day, {
+            "docs": 0, "docNotes": 0, "apis": 0, "apiNotes": 0, "created": 0, "checked": 0,
+        })
+
+    for day, count, notes in conn.execute(
+        "SELECT report_date, COUNT(*), COALESCE(SUM(note_count), 0) FROM documents "
+        "WHERE report_date >= ? AND report_date <= ? GROUP BY report_date",
+        (start_s, end_s),
+    ):
+        item = slot(day)
+        item["docs"] = count
+        item["docNotes"] = notes
+
+    for day, count, notes in conn.execute(
+        "SELECT report_date, COUNT(*), COALESCE(SUM(note_count), 0) FROM endpoints "
+        "WHERE report_date >= ? AND report_date <= ? GROUP BY report_date",
+        (start_s, end_s),
+    ):
+        item = slot(day)
+        item["apis"] = count
+        item["apiNotes"] = notes
+
+    for day, kind_name, count in conn.execute(
+        "SELECT report_date, kind, COUNT(*) FROM issues "
+        "WHERE report_date >= ? AND report_date <= ? GROUP BY report_date, kind",
+        (start_s, end_s),
+    ):
+        item = slot(day)
+        item["created" if kind_name == "created" else "checked"] = count
+
+    return stats
+
+
 def build_report(conn, cfg, start, end, kind):
     labels = cfg["labels"]
     order = category_order(cfg)
+    rule = labels["separator"]
+    span_days = (end - start).days + 1
     start_s = start.isoformat()
     end_s = end.isoformat()
     stored = [row[0] for row in conn.execute(
@@ -231,11 +277,40 @@ def build_report(conn, cfg, start, end, kind):
     api_notes = sum(item["notes"] for item in apis.values())
     lines.extend([
         "",
+        rule,
+        "",
         "## " + labels["summary"],
         "- " + labels["summaryDocs"] + ": " + str(len(docs)) + " " + labels["documents"] + " - " + str(story_notes) + " " + labels["comments"],
         "- " + labels["summaryApis"] + ": " + str(len(apis)) + " " + labels["endpoints"] + " - " + str(api_notes) + " " + labels["comments"],
         "- " + labels["summaryCreated"] + ": " + str(len(created)) + " " + labels["issues"],
         "- " + labels["summaryChecked"] + ": " + str(len(checked)) + " " + labels["issues"],
+    ])
+
+    if span_days > 1:
+        stats = per_day_counts(conn, start_s, end_s)
+        weekdays = labels.get("weekdayNames") or {}
+        lines.extend(["", rule, "", "## " + labels["summaryPerDay"]])
+        for day in daterange(start, end):
+            key = day.isoformat()
+            name = weekdays.get(str(day.weekday())) or labels["unknown"]
+            if key not in stored_set:
+                lines.append("- " + fill(labels["perDayNoData"], weekday=name))
+                continue
+            row = stats.get(key) or {}
+            lines.append("- " + fill(
+                labels["perDayLine"],
+                weekday=name,
+                docs=row.get("docs", 0),
+                docNotes=row.get("docNotes", 0),
+                apis=row.get("apis", 0),
+                apiNotes=row.get("apiNotes", 0),
+                created=row.get("created", 0),
+                checked=row.get("checked", 0),
+            ))
+
+    lines.extend([
+        "",
+        rule,
         "",
         "## " + labels["section1"],
         labels["total"] + ": " + str(len(docs)) + " " + labels["documents"] + " - " + str(story_notes) + " " + labels["comments"],
@@ -246,6 +321,8 @@ def build_report(conn, cfg, start, end, kind):
         lines.append("- " + item["title"] + " - " + str(item["notes"]) + " " + labels["comments"])
 
     lines.extend([
+        "",
+        rule,
         "",
         "## " + labels["section2"],
         labels["total"] + ": " + str(len(apis)) + " " + labels["endpoints"] + " - " + str(api_notes) + " " + labels["comments"],
@@ -262,6 +339,8 @@ def build_report(conn, cfg, start, end, kind):
 
     lines.extend([
         "",
+        rule,
+        "",
         "## " + labels["section3"],
         labels["total"] + ": " + str(len(created)) + " " + labels["issues"],
     ])
@@ -272,6 +351,8 @@ def build_report(conn, cfg, start, end, kind):
 
     lines.extend([
         "",
+        rule,
+        "",
         "## " + labels["section4"],
         labels["total"] + ": " + str(len(checked)) + " " + labels["issues"],
     ])
@@ -281,7 +362,7 @@ def build_report(conn, cfg, start, end, kind):
         item = checked[iid]
         lines.append("- #" + str(iid) + " " + item["title"] + " - " + labels["state"] + ": " + state_label(labels, item["state"]))
 
-    lines.extend(["", labels["sourceDb"], ""])
+    lines.extend(["", rule, "", labels["sourceDb"], ""])
     return "\n".join(lines), len(stored), missing
 
 
